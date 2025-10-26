@@ -230,6 +230,8 @@ void MainWindow::connectSignals() {
     connect(ui->actionSave, SIGNAL(triggered()), this, SLOT(fileSaveSlot()));
     connect(ui->actionSaveAs, SIGNAL(triggered()), this, SLOT(fileSaveAsSlot()));
     connect(ui->actionOpen, SIGNAL(triggered()), this, SLOT(fileOpenSlot()));
+    connect(ui->actionOpenVideo, SIGNAL(triggered()), this, SLOT(fileOpenVideoSlot()));
+    connect(ui->actionExportVideo, SIGNAL(triggered()), this, SLOT(exportVideoSlot()));
     connect(ui->actionCopy, SIGNAL(triggered()), this, SLOT(copySlot()));
     connect(ui->actionPaste, SIGNAL(triggered()), this, SLOT(pasteSlot()));
     connect(ui->actionQuickTour, SIGNAL(triggered()), helpWindow, SLOT(showHelp()));
@@ -307,6 +309,8 @@ void MainWindow::connectSignals() {
     connect(ui->predefinedPaletteCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(predefinedPaletteComboChangedSlot(int)));
     connect(ui->colorComparisonCombo, SIGNAL(currentIndexChanged(int)), this, SLOT(colorComparisonComboChangedSlot(int)));
     connect(ui->graphicsView, SIGNAL(loadImageSignal(QString)), this, SLOT(loadImageFromFileSlot(QString)));
+    connect(ui->graphicsView, SIGNAL(loadVideoSignal(QString)), this, SLOT(loadVideoSlot(QString)));
+    connect(videoTimeline, &VideoTimeline::frameChanged, this, &MainWindow::videoFrameChangedSlot);
     connect(ui->paletteBrowseButton, SIGNAL(clicked()), this, SLOT(paletteBrowseButtonClickedSlot()));
     connect(ui->palettePathEdit, SIGNAL(editingFinished()), this, SLOT(palettePathEditEditingFinishedSlot()));
     connect(ui->paletteColorsEdit, SIGNAL(editingFinished()), this, SLOT(paletteColorsEditEditingFinishedSlot()));

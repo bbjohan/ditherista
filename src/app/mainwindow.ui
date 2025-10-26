@@ -4776,8 +4776,10 @@
      <string>File</string>
     </property>
     <addaction name="actionOpen"/>
+    <addaction name="actionOpenVideo"/>
     <addaction name="actionSave"/>
     <addaction name="actionSaveAs"/>
+    <addaction name="actionExportVideo"/>
    </widget>
    <widget class="QMenu" name="menuEdit">
     <property name="title">
@@ -4807,6 +4809,14 @@
     <string>Ctrl+O</string>
    </property>
   </action>
+  <action name="actionOpenVideo">
+   <property name="text">
+    <string>Open Video...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+Shift+O</string>
+   </property>
+  </action>
   <action name="actionSave">
    <property name="enabled">
     <bool>false</bool>
@@ -4827,6 +4837,17 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+S</string>
+   </property>
+  </action>
+  <action name="actionExportVideo">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Export Video...</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+E</string>
    </property>
   </action>
   <action name="actionCopy">
