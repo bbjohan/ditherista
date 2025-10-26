@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "videoprocessor.h"
 #include "videoprocessdialog.h"
+#include "consts.h"
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTimer>
@@ -575,7 +576,59 @@ void MainWindow::videoFrameChangedSlot(int frameNumber) {
     delete processor;
     
     if (!frame.isNull()) {
-        // Load and dither the frame
-        loadImage(&frame);
+        // Update the frame without resetting UI state
+        updateVideoFrame(&frame);
     }
 }
+
+void MainWindow::updateVideoFrame(const QImage* image) {
+    /* Update video frame without resetting the entire UI state */
+    
+    if(image->width() * image->height() > IMAGE_MAX_SIZE) {
+        return;
+    }
+    
+    // Update resolution label
+    ui->resolutionLabel->setText(QString("%1 \u00D7 %2").arg(image->width()).arg(image->height()));
+    
+    // Update the current tab's image hash and re-apply current dithering
+    if (ui->imageSettingsStackedWidget->currentIndex() == 0) {
+        // Mono tab - save current adjustment values
+        double brightness = imageHashMono.brightness;
+        double contrast = imageHashMono.contrast;
+        double gamma = imageHashMono.gamma;
+        
+        // Update source image
+        imageHashMono.setSourceImage(image);
+        
+        // Restore adjustment values
+        imageHashMono.brightness = brightness;
+        imageHashMono.contrast = contrast;
+        imageHashMono.gamma = gamma;
+        
+        // Apply adjustments and update view
+        ui->graphicsView->setSourceImageMono(imageHashMono.getSourceQImage());
+        adjustImageMono();
+        
+    } else {
+        // Color tab - save current adjustment values
+        double brightness = imageHashColor.brightness;
+        double contrast = imageHashColor.contrast;
+        double gamma = imageHashColor.gamma;
+        double saturation = imageHashColor.saturation;
+        
+        // Update source image
+        imageHashColor.setSourceImage(image);
+        
+        // Restore adjustment values
+        imageHashColor.brightness = brightness;
+        imageHashColor.contrast = contrast;
+        imageHashColor.gamma = gamma;
+        imageHashColor.saturation = saturation;
+        
+        // Apply adjustments and update view
+        ui->graphicsView->setSourceImageColor(imageHashColor.getSourceQImage());
+        adjustImageColor();
+    }
+}
+

@@ -5,12 +5,20 @@
 #include <QImageReader>
 #include <QImageWriter>
 #include <QDebug>
+#include <QThread>
+#include <QtConcurrent>
 
 VideoProcessor::VideoProcessor(QObject* parent) : QObject(parent) {
     tempDir = new QTemporaryDir();
     if (!tempDir->isValid()) {
         qWarning() << "Failed to create temporary directory for video processing";
     }
+    
+    // Use all available CPU cores by default
+    threadCount = QThread::idealThreadCount();
+    if (threadCount < 1) threadCount = 4; // fallback
+    
+    qDebug() << "VideoProcessor: Using" << threadCount << "threads for parallel processing";
 }
 
 VideoProcessor::~VideoProcessor() {
@@ -20,6 +28,13 @@ VideoProcessor::~VideoProcessor() {
         delete ffmpegProcess;
     }
     delete tempDir;
+}
+
+void VideoProcessor::setThreadCount(int count) {
+    if (count > 0 && count <= QThread::idealThreadCount() * 2) {
+        threadCount = count;
+        qDebug() << "VideoProcessor: Thread count set to" << threadCount;
+    }
 }
 
 bool VideoProcessor::checkFFmpegAvailable() {
@@ -157,6 +172,7 @@ void VideoProcessor::onFFmpegExtractFinished(int exitCode, QProcess::ExitStatus 
     // Start processing frames
     state = ProcessingFrames;
     processedFrames = 0;
+    atomicProcessedFrames.storeRelaxed(0);
     
     QDir dir(tempDir->path());
     QStringList filters;
@@ -171,11 +187,57 @@ void VideoProcessor::onFFmpegExtractFinished(int exitCode, QProcess::ExitStatus 
         return;
     }
 
-    // Process each frame with the dither callback
-    for (int i = 0; i < frameFiles.count(); ++i) {
+    emit progressChanged(0, totalFrames);
+
+    // Process frames in parallel using QtConcurrent
+    // Split work into batches based on thread count
+    int batchSize = std::max(1, totalFrames / (threadCount * 4)); // More batches for better load balancing
+    
+    QVector<QFuture<void>> futures;
+    
+    for (int i = 0; i < totalFrames; i += batchSize) {
         if (isCancelled) {
+            // Wait for all started tasks to finish
+            for (auto& future : futures) {
+                future.waitForFinished();
+            }
             emit finished(false, tr("Processing cancelled by user"));
             state = Idle;
+            return;
+        }
+        
+        int endFrame = std::min(i + batchSize, totalFrames);
+        
+        // Launch parallel task for this batch
+        QFuture<void> future = QtConcurrent::run([this, i, endFrame, frameFiles]() {
+            processFramesBatch(i, endFrame, frameFiles);
+        });
+        
+        futures.append(future);
+    }
+    
+    // Wait for all tasks to complete
+    for (auto& future : futures) {
+        future.waitForFinished();
+    }
+    
+    if (isCancelled) {
+        emit finished(false, tr("Processing cancelled by user"));
+        state = Idle;
+        return;
+    }
+
+    // Start encoding
+    if (!encodeVideo(currentOutputPath)) {
+        emit errorOccurred(tr("Failed to start video encoding"));
+        emit finished(false, tr("Encoding failed to start"));
+        state = Idle;
+    }
+}
+
+void VideoProcessor::processFramesBatch(int startFrame, int endFrame, const QStringList& frameFiles) {
+    for (int i = startFrame; i < endFrame; ++i) {
+        if (isCancelled) {
             return;
         }
 
@@ -193,20 +255,26 @@ void VideoProcessor::onFFmpegExtractFinished(int exitCode, QProcess::ExitStatus 
         // Save dithered frame
         QString ditheredPath = tempDir->path() + "/dithered_" + frameFiles[i];
         if (!ditheredFrame.save(ditheredPath, "PNG")) {
-            emit errorOccurred(tr("Failed to save dithered frame: ") + QString::number(i));
+            qWarning() << "Failed to save dithered frame:" << i;
             continue;
         }
 
-        processedFrames++;
-        emit progressChanged(processedFrames, totalFrames);
-        emit frameProcessed(ditheredFrame, i);
-    }
-
-    // Start encoding
-    if (!encodeVideo(currentOutputPath)) {
-        emit errorOccurred(tr("Failed to start video encoding"));
-        emit finished(false, tr("Encoding failed to start"));
-        state = Idle;
+        // Update progress atomically
+        int current = atomicProcessedFrames.fetchAndAddRelaxed(1) + 1;
+        
+        // Emit progress less frequently to avoid UI overhead
+        if (current % 10 == 0 || current == totalFrames) {
+            QMetaObject::invokeMethod(this, [this, current]() {
+                emit progressChanged(current, totalFrames);
+            }, Qt::QueuedConnection);
+        }
+        
+        // Emit frame processed for preview (but not too often)
+        if (current % 30 == 0 || current == totalFrames) {
+            QMetaObject::invokeMethod(this, [this, ditheredFrame, i]() {
+                emit frameProcessed(ditheredFrame, i);
+            }, Qt::QueuedConnection);
+        }
     }
 }
 
@@ -231,8 +299,9 @@ bool VideoProcessor::encodeVideo(const QString& outputPath) {
          << "-i" << framesPattern
          << "-c:v" << "libx264"
          << "-pix_fmt" << "yuv420p"
-         << "-preset" << "medium"
+         << "-preset" << "veryfast"  // Changed from "medium" to "veryfast" for speed
          << "-crf" << "18"
+         << "-threads" << QString::number(threadCount)  // Use multiple threads for encoding too
          << outputPath;
 
     ffmpegProcess->start("ffmpeg", args);

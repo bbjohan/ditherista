@@ -148,6 +148,7 @@ private:
     // file I/O
     void saveFile(const QString &fileName);
     void loadImage(const QImage* image);
+    void updateVideoFrame(const QImage* image); // Update frame without resetting UI state
     void fileSaveSlotImpl(bool saveAs);
     // image adjustments
     void adjustImageMono();

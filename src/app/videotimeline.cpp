@@ -8,6 +8,7 @@ VideoTimeline::VideoTimeline(QWidget *parent)
     , m_totalFrames(0)
     , m_fps(0.0)
     , m_visible(false)
+    , m_isDragging(false)
 {
     // Create layout
     QVBoxLayout* mainLayout = new QVBoxLayout(this);
@@ -61,6 +62,7 @@ VideoTimeline::VideoTimeline(QWidget *parent)
     
     // Connect signals
     connect(m_slider, &QSlider::valueChanged, this, &VideoTimeline::onSliderValueChanged);
+    connect(m_slider, &QSlider::sliderReleased, this, &VideoTimeline::onSliderReleased);
     connect(m_previousButton, &QPushButton::clicked, this, &VideoTimeline::onPreviousFrameClicked);
     connect(m_nextButton, &QPushButton::clicked, this, &VideoTimeline::onNextFrameClicked);
     
@@ -104,9 +106,14 @@ void VideoTimeline::setVisible(bool visible) {
     QWidget::setVisible(visible);
 }
 
-void VideoTimeline::onSliderValueChanged(int value) {
+void VideoTimeline::onSliderValueChanged(int /*value*/) {
+    // Only update labels while dragging, don't emit frameChanged yet
     updateLabels();
-    emit frameChanged(value);
+}
+
+void VideoTimeline::onSliderReleased() {
+    // Now that the user released the mouse, emit the frame change signal
+    emit frameChanged(m_slider->value());
 }
 
 void VideoTimeline::onPreviousFrameClicked() {

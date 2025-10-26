@@ -26,6 +26,7 @@ signals:
 
 private slots:
     void onSliderValueChanged(int value);
+    void onSliderReleased();
     void onPreviousFrameClicked();
     void onNextFrameClicked();
 
@@ -39,6 +40,7 @@ private:
     int m_totalFrames;
     double m_fps;
     bool m_visible;
+    bool m_isDragging;
     
     void updateLabels();
     QString formatTime(int frameNumber);

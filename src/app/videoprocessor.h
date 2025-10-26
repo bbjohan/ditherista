@@ -3,33 +3,41 @@
 #define VIDEOPROCESSOR_H
 
 #include <QObject>
-#include <QImage>
 #include <QProcess>
-#include <QString>
+#include <QImage>
 #include <QTemporaryDir>
 #include <functional>
+#include <QThreadPool>
+#include <QFutureWatcher>
+#include <QtConcurrent>
 
 class VideoProcessor : public QObject {
     Q_OBJECT
 
 public:
     explicit VideoProcessor(QObject* parent = nullptr);
-    ~VideoProcessor() override;
+    ~VideoProcessor();
 
-    // Start video processing with a callback for frame dithering
+    // Get video information
+    bool getVideoInfo(const QString& videoPath, int& width, int& height, 
+                     double& fps, int& frameCount);
+    
+    // Extract a single frame at a specific time
+    QImage extractSingleFrame(const QString& videoPath, double timeSeconds);
+    
+    // Process entire video with dithering
     bool processVideo(const QString& inputPath, 
                      const QString& outputPath,
                      std::function<QImage(const QImage&, int)> ditherCallback);
     
-    // Cancel ongoing processing
+    // Cancel current operation
     void cancel();
     
-    // Get video properties
-    bool getVideoInfo(const QString& videoPath, int& width, int& height, 
-                     double& fps, int& frameCount);
+    // Check if FFmpeg is available
+    static bool checkFFmpegAvailable();
     
-    // Extract a single frame from the video at specified time (in seconds)
-    QImage extractSingleFrame(const QString& videoPath, double timeSeconds = 0.0);
+    // Set number of threads for parallel processing (default: CPU cores)
+    void setThreadCount(int count);
 
 signals:
     void progressChanged(int current, int total);
@@ -43,20 +51,20 @@ private slots:
     void onFFmpegReadyReadStandardError();
 
 private:
-    enum ProcessState {
+    bool extractFrames(const QString& inputPath);
+    bool encodeVideo(const QString& outputPath);
+    void processFramesBatch(int startFrame, int endFrame, const QStringList& frameFiles);
+
+    enum State {
         Idle,
         ExtractingFrames,
         ProcessingFrames,
         EncodingVideo
     };
 
-    bool extractFrames(const QString& inputPath);
-    bool encodeVideo(const QString& outputPath);
-    bool checkFFmpegAvailable();
-    
+    State state = Idle;
     QProcess* ffmpegProcess = nullptr;
     QTemporaryDir* tempDir = nullptr;
-    ProcessState state = Idle;
     
     QString currentInputPath;
     QString currentOutputPath;
@@ -67,7 +75,12 @@ private:
     double videoFps = 30.0;
     int totalFrames = 0;
     int processedFrames = 0;
+    
     bool isCancelled = false;
+    int threadCount = QThread::idealThreadCount();
+    
+    QMutex progressMutex;
+    QAtomicInt atomicProcessedFrames;
 };
 
 #endif // VIDEOPROCESSOR_H
