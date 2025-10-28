@@ -118,8 +118,40 @@ void MainWindow::exportVideoSlot() {
         }
     });
     
+    // Preallocate buffers outside the callback to reuse them
+    // This significantly reduces memory allocation overhead
+    int videoWidth = 0, videoHeight = 0;
+    double videoFps = 0;
+    int videoFrameCount = 0;
+    if (processor->getVideoInfo(currentVideoPath, videoWidth, videoHeight, videoFps, videoFrameCount)) {
+        qDebug() << "Video info: " << videoWidth << "x" << videoHeight << " @ " << videoFps << " fps, " << videoFrameCount << " frames";
+    }
+    
+    // Preallocate output buffer for the maximum frame size
+    size_t bufferSize = static_cast<size_t>(videoWidth) * static_cast<size_t>(videoHeight);
+    int* colorBuffer = static_cast<int*>(calloc(bufferSize, sizeof(int)));
+    uint8_t* monoBuffer = static_cast<uint8_t*>(calloc(bufferSize, sizeof(uint8_t)));
+    
+    // CRITICAL: Create ONE ImageHash and reuse it for all frames
+    // This avoids allocating 50+ MB per frame
+    ImageHashMono* reusableHashMono = nullptr;
+    ImageHashColor* reusableHashColor = nullptr;
+    
+    if (lastTabIndex == TAB_INDEX_MONO) {
+        reusableHashMono = new ImageHashMono();
+        reusableHashMono->brightness = imageHashMono.brightness;
+        reusableHashMono->contrast = imageHashMono.contrast;
+        reusableHashMono->gamma = imageHashMono.gamma;
+    } else {
+        reusableHashColor = new ImageHashColor();
+        reusableHashColor->brightness = imageHashColor.brightness;
+        reusableHashColor->contrast = imageHashColor.contrast;
+        reusableHashColor->gamma = imageHashColor.gamma;
+        reusableHashColor->saturation = imageHashColor.saturation;
+    }
+    
     // Create dither callback based on current settings
-    auto ditherCallback = [this](const QImage& frame, int frameNum) -> QImage {
+    auto ditherCallback = [this, colorBuffer, monoBuffer, reusableHashMono, reusableHashColor](const QImage& frame, int frameNum) -> QImage {
         // Apply dithering to the frame and return dithered image
         QImage ditheredFrame;
         
@@ -134,27 +166,44 @@ void MainWindow::exportVideoSlot() {
         }
         
         if (lastTabIndex == TAB_INDEX_MONO) {
-            // Mono dithering
+            // Mono dithering - REUSE the same ImageHash
             int w = frame.width();
             int h = frame.height();
             
-            // Create a temporary image hash for this frame
-            ImageHashMono tempHash;
-            tempHash.setSourceImage(&frame);
+            // Update the ImageHash with the new frame
+            if (frameNum == 0) {
+                // setSourceImage() resets brightness/contrast/gamma, so save and restore them
+                int savedBrightness = reusableHashMono->brightness;
+                int savedContrast = reusableHashMono->contrast;
+                int savedGamma = reusableHashMono->gamma;
+                
+                reusableHashMono->setSourceImage(&frame);
+                
+                // Restore adjustments and reapply
+                reusableHashMono->brightness = savedBrightness;
+                reusableHashMono->contrast = savedContrast;
+                reusableHashMono->gamma = savedGamma;
+                reusableHashMono->adjustSource();
+            } else {
+                // Just update pixel data without reallocating
+                DitherImage* origLinear = reusableHashMono->getOrigLinear();
+                for(int y = 0; y < h; y++) {
+                    for(int x = 0; x < w; x++) {
+                        const QRgb pixel = frame.pixel(QPoint(x, y));
+                        DitherImage_set_pixel_rgba(origLinear, x, y, qRed(pixel), qGreen(pixel), qBlue(pixel), qAlpha(pixel), true);
+                    }
+                }
+                // Reapply adjustments from origLinear to sourceImg
+                reusableHashMono->adjustSource();
+            }
             
-            // Apply the same brightness/contrast/gamma adjustments as the main image
-            tempHash.brightness = imageHashMono.brightness;
-            tempHash.contrast = imageHashMono.contrast;
-            tempHash.gamma = imageHashMono.gamma;
-            
-            // IMPORTANT: Apply the adjustments to the source image
-            tempHash.adjustSource();
-            
-            // Allocate output buffer
-            uint8_t *out_buf = static_cast<uint8_t *>(calloc(w * h, sizeof(uint8_t)));
+            // REUSE preallocated buffer instead of allocating new one
+            uint8_t *out_buf = monoBuffer;
+            // Clear the buffer
+            memset(out_buf, 0, static_cast<size_t>(w * h) * sizeof(uint8_t));
             
             // Get the source image (with adjustments applied)
-            DitherImage* sourceImg = tempHash.getSourceImage();
+            DitherImage* sourceImg = reusableHashMono->getSourceImage();
             
             // Apply current dither algorithm synchronously
             switch (current_dither_type) {
@@ -406,30 +455,48 @@ void MainWindow::exportVideoSlot() {
                 }
             }
             
-            free(out_buf);
+            // DON'T free - buffer is reused
         } else {
-            // Color dithering
+            // Color dithering - REUSE the same ImageHash
             int w = frame.width();
             int h = frame.height();
             
-            // Create a temporary image hash for this frame
-            ImageHashColor tempHash;
-            tempHash.setSourceImage(&frame);
+            // Update the ImageHash with the new frame
+            if (frameNum == 0) {
+                // setSourceImage() resets brightness/contrast/gamma/saturation, so save and restore them
+                int savedBrightness = reusableHashColor->brightness;
+                int savedContrast = reusableHashColor->contrast;
+                int savedGamma = reusableHashColor->gamma;
+                int savedSaturation = reusableHashColor->saturation;
+                
+                reusableHashColor->setSourceImage(&frame);
+                
+                // Restore adjustments and reapply
+                reusableHashColor->brightness = savedBrightness;
+                reusableHashColor->contrast = savedContrast;
+                reusableHashColor->gamma = savedGamma;
+                reusableHashColor->saturation = savedSaturation;
+                reusableHashColor->adjustSource();
+            } else {
+                // Just update pixel data in origQImage without reallocating
+                QImage* origImg = reusableHashColor->getSourceQImage();
+                for(int y = 0; y < h; y++) {
+                    for(int x = 0; x < w; x++) {
+                        const QRgb pixel = frame.pixel(QPoint(x, y));
+                        origImg->setPixel(x, y, pixel);
+                    }
+                }
+                // Reapply adjustments from origQImage to sourceImg
+                reusableHashColor->adjustSource();
+            }
             
-            // Apply the same brightness/contrast/gamma/saturation adjustments
-            tempHash.brightness = imageHashColor.brightness;
-            tempHash.contrast = imageHashColor.contrast;
-            tempHash.gamma = imageHashColor.gamma;
-            tempHash.saturation = imageHashColor.saturation;
-            
-            // IMPORTANT: Apply the adjustments to the source image
-            tempHash.adjustSource();
-            
-            // Allocate output buffer
-            int* out_buf = static_cast<int*>(calloc(w * h, sizeof(int)));
+            // REUSE preallocated buffer instead of allocating new one
+            int* out_buf = colorBuffer;
+            // Clear the buffer
+            memset(out_buf, 0, static_cast<size_t>(w * h) * sizeof(int));
             
             // Get the source image (with adjustments applied)
-            ColorImage* sourceImg = tempHash.getSourceImage();
+            ColorImage* sourceImg = reusableHashColor->getSourceImage();
             
             // Apply current dither algorithm synchronously
             if (current_dither_type == ERR_C) {
@@ -538,7 +605,7 @@ void MainWindow::exportVideoSlot() {
                 }
             }
             
-            free(out_buf);
+            // DON'T free - buffer is reused
         }
         
         return ditheredFrame;
@@ -547,6 +614,14 @@ void MainWindow::exportVideoSlot() {
     // Start processing
     dialog->show();
     processor->processVideo(currentVideoPath, outputPath, ditherCallback);
+    
+    // Free buffers after processing is complete
+    free(colorBuffer);
+    free(monoBuffer);
+    
+    // Clean up reusable hash objects
+    delete reusableHashMono;
+    delete reusableHashColor;
 }
 
 void MainWindow::fileOpenVideoSlot() {

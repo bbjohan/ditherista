@@ -6,19 +6,22 @@
 #include <QImageWriter>
 #include <QDebug>
 #include <QThread>
-#include <QtConcurrent>
+#include <QStandardPaths>
+#include <QCoreApplication>
+#include <QFile>
+#include <QPixmapCache>
 
 VideoProcessor::VideoProcessor(QObject* parent) : QObject(parent) {
-    tempDir = new QTemporaryDir();
-    if (!tempDir->isValid()) {
-        qWarning() << "Failed to create temporary directory for video processing";
+    // Use .cache/ditherista directory instead of temporary directory
+    QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+    cachePath = cacheDir + "/ditherista";
+    
+    QDir dir;
+    if (!dir.mkpath(cachePath)) {
+        qWarning() << "Failed to create cache directory:" << cachePath;
+    } else {
+        qDebug() << "VideoProcessor: Using cache directory:" << cachePath;
     }
-    
-    // Use all available CPU cores by default
-    threadCount = QThread::idealThreadCount();
-    if (threadCount < 1) threadCount = 4; // fallback
-    
-    qDebug() << "VideoProcessor: Using" << threadCount << "threads for parallel processing";
 }
 
 VideoProcessor::~VideoProcessor() {
@@ -27,13 +30,20 @@ VideoProcessor::~VideoProcessor() {
         ffmpegProcess->waitForFinished();
         delete ffmpegProcess;
     }
-    delete tempDir;
+    cleanupCache();
 }
 
-void VideoProcessor::setThreadCount(int count) {
-    if (count > 0 && count <= QThread::idealThreadCount() * 2) {
-        threadCount = count;
-        qDebug() << "VideoProcessor: Thread count set to" << threadCount;
+void VideoProcessor::cleanupCache() {
+    // Clean up processed frames from cache
+    QDir cacheDir(cachePath);
+    if (cacheDir.exists()) {
+        QStringList filters;
+        filters << "dithered_frame_*.png";
+        QStringList files = cacheDir.entryList(filters, QDir::Files);
+        for (const QString& file : files) {
+            cacheDir.remove(file);
+        }
+        qDebug() << "VideoProcessor: Cleaned up" << files.count() << "cached frames";
     }
 }
 
@@ -101,12 +111,8 @@ QImage VideoProcessor::extractSingleFrame(const QString& videoPath, double timeS
         return QImage();
     }
 
-    if (!tempDir->isValid()) {
-        return QImage();
-    }
-
     // Create a temporary file for the extracted frame
-    QString framePath = tempDir->path() + "/preview_frame.png";
+    QString framePath = cachePath + "/preview_frame.png";
     
     // Remove old preview frame if exists
     QFile::remove(framePath);
@@ -130,153 +136,160 @@ QImage VideoProcessor::extractSingleFrame(const QString& videoPath, double timeS
     return frame;
 }
 
-bool VideoProcessor::extractFrames(const QString& inputPath) {
-    if (!tempDir->isValid()) {
-        emit errorOccurred(tr("Temporary directory is not valid"));
+bool VideoProcessor::extractAllFrames() {
+    /* Extract all frames from video in one go */
+    state = ExtractingFrames;
+    
+    // Clean up any old frames
+    cleanupCache();
+    QDir cacheDir(cachePath);
+    QStringList oldFrames = cacheDir.entryList(QStringList() << "frame_*.png", QDir::Files);
+    for (const QString& file : oldFrames) {
+        cacheDir.remove(file);
+    }
+    
+    QProcess extractProcess;
+    QStringList extractArgs;
+    extractArgs << "-i" << currentInputPath
+                << "-vf" << QString("fps=%1").arg(videoFps)
+                << cachePath + "/frame_%06d.png";
+    
+    extractProcess.start("ffmpeg", extractArgs);
+    if (!extractProcess.waitForStarted()) {
+        emit errorOccurred(tr("Failed to start frame extraction"));
         return false;
     }
-
-    state = ExtractingFrames;
-    isCancelled = false;
     
-    ffmpegProcess = new QProcess(this);
-    connect(ffmpegProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &VideoProcessor::onFFmpegExtractFinished);
-    connect(ffmpegProcess, &QProcess::readyReadStandardError,
-            this, &VideoProcessor::onFFmpegReadyReadStandardError);
-
-    QString framesPattern = tempDir->path() + "/frame_%06d.png";
-    QStringList args;
-    args << "-i" << inputPath
-         << "-vf" << "fps=" + QString::number(videoFps)
-         << framesPattern;
-
-    ffmpegProcess->start("ffmpeg", args);
-    return ffmpegProcess->waitForStarted();
+    // Wait for extraction to complete
+    if (!extractProcess.waitForFinished(-1)) {  // No timeout
+        emit errorOccurred(tr("Frame extraction failed"));
+        return false;
+    }
+    
+    if (extractProcess.exitCode() != 0) {
+        emit errorOccurred(tr("FFmpeg extraction error"));
+        return false;
+    }
+    
+    qDebug() << "VideoProcessor: All frames extracted to cache";
+    return true;
 }
 
-void VideoProcessor::onFFmpegExtractFinished(int exitCode, QProcess::ExitStatus exitStatus) {
-    if (isCancelled) {
-        emit finished(false, tr("Processing cancelled by user"));
-        state = Idle;
-        return;
-    }
-
-    if (exitStatus != QProcess::NormalExit || exitCode != 0) {
-        emit errorOccurred(tr("Failed to extract video frames"));
-        emit finished(false, tr("Frame extraction failed"));
-        state = Idle;
-        return;
-    }
-
-    // Start processing frames
+bool VideoProcessor::processFramesSequentially() {
+    /* Process frames one at a time to minimize memory usage */
     state = ProcessingFrames;
+    isCancelled = false;
     processedFrames = 0;
-    atomicProcessedFrames.storeRelaxed(0);
     
-    QDir dir(tempDir->path());
-    QStringList filters;
-    filters << "frame_*.png";
-    QStringList frameFiles = dir.entryList(filters, QDir::Files, QDir::Name);
-    totalFrames = frameFiles.count();
-
-    if (totalFrames == 0) {
-        emit errorOccurred(tr("No frames extracted from video"));
-        emit finished(false, tr("No frames found"));
+    // Get list of extracted frames
+    QDir cacheDir(cachePath);
+    QStringList frameFiles = cacheDir.entryList(QStringList() << "frame_*.png", QDir::Files, QDir::Name);
+    
+    if (frameFiles.isEmpty()) {
+        emit errorOccurred(tr("No frames found to process"));
         state = Idle;
-        return;
+        return false;
     }
-
+    
+    totalFrames = frameFiles.count();
     emit progressChanged(0, totalFrames);
-
-    // Process frames in parallel using QtConcurrent
-    // Split work into batches based on thread count
-    int batchSize = std::max(1, totalFrames / (threadCount * 4)); // More batches for better load balancing
     
-    QVector<QFuture<void>> futures;
+    qDebug() << "VideoProcessor: Processing" << totalFrames << "frames sequentially";
     
-    for (int i = 0; i < totalFrames; i += batchSize) {
+    // Process each frame one at a time
+    for (int i = 0; i < totalFrames; ++i) {
         if (isCancelled) {
-            // Wait for all started tasks to finish
-            for (auto& future : futures) {
-                future.waitForFinished();
-            }
             emit finished(false, tr("Processing cancelled by user"));
             state = Idle;
-            return;
+            return false;
         }
         
-        int endFrame = std::min(i + batchSize, totalFrames);
+        QString framePath = cachePath + "/" + frameFiles[i];
+        QString ditheredPath = cachePath + QString("/dithered_frame_%1.png").arg(i + 1, 6, 10, QChar('0'));
         
-        // Launch parallel task for this batch
-        QFuture<void> future = QtConcurrent::run([this, i, endFrame, frameFiles]() {
-            processFramesBatch(i, endFrame, frameFiles);
-        });
+        // Strict scope to ensure immediate deallocation
+        {
+            // Load ONE frame at a time with explicit format to avoid conversions
+            QImageReader reader(framePath);
+            reader.setAutoTransform(true);
+            QImage frame = reader.read();
+            
+            if (frame.isNull()) {
+                qWarning() << "Failed to load frame:" << framePath;
+                QFile::remove(framePath);
+                continue;
+            }
+            
+            // Convert to RGB888 format to reduce memory if needed
+            if (frame.format() != QImage::Format_RGB888 && 
+                frame.format() != QImage::Format_ARGB32) {
+                frame = frame.convertToFormat(QImage::Format_RGB888);
+            }
+            
+            // Apply dithering to this single frame
+            QImage ditheredFrame = currentDitherCallback(frame, i);
+            
+            // IMMEDIATELY destroy original frame
+            frame = QImage();
+            
+            // Save dithered frame immediately
+            QImageWriter writer(ditheredPath, "PNG");
+            writer.setCompression(1); // Fast compression
+            if (!writer.write(ditheredFrame)) {
+                qWarning() << "Failed to save dithered frame:" << i;
+                QFile::remove(framePath);
+                continue;
+            }
+            
+            // Emit preview occasionally (but don't keep in memory)
+            if ((i + 1) % 30 == 0 || (i + 1) == totalFrames) {
+                emit frameProcessed(ditheredFrame, i);
+            }
+            
+            // IMMEDIATELY destroy dithered frame
+            ditheredFrame = QImage();
+            
+        } // Scope ends here - all QImage objects destroyed
         
-        futures.append(future);
-    }
-    
-    // Wait for all tasks to complete
-    for (auto& future : futures) {
-        future.waitForFinished();
+        // Delete the original extracted frame to save disk space
+        QFile::remove(framePath);
+        
+        // Update progress
+        processedFrames = i + 1;
+        if ((i + 1) % 5 == 0 || (i + 1) == totalFrames) {
+            emit progressChanged(i + 1, totalFrames);
+        }
+        
+        // Every 10 frames, aggressively clean up memory
+        if ((i + 1) % 10 == 0) {
+            // Force Qt to process events and clean up
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 100);
+            
+            // Force cleanup of Qt's internal image cache
+            QPixmapCache::clear();
+        }
     }
     
     if (isCancelled) {
         emit finished(false, tr("Processing cancelled by user"));
         state = Idle;
-        return;
+        return false;
     }
-
+    
+    qDebug() << "VideoProcessor: All frames processed, starting encoding";
+    
     // Start encoding
     if (!encodeVideo(currentOutputPath)) {
         emit errorOccurred(tr("Failed to start video encoding"));
         emit finished(false, tr("Encoding failed to start"));
         state = Idle;
+        return false;
     }
+    
+    return true;
 }
 
-void VideoProcessor::processFramesBatch(int startFrame, int endFrame, const QStringList& frameFiles) {
-    for (int i = startFrame; i < endFrame; ++i) {
-        if (isCancelled) {
-            return;
-        }
 
-        QString framePath = tempDir->path() + "/" + frameFiles[i];
-        QImage frame(framePath);
-        
-        if (frame.isNull()) {
-            qWarning() << "Failed to load frame:" << framePath;
-            continue;
-        }
-
-        // Apply dithering
-        QImage ditheredFrame = currentDitherCallback(frame, i);
-        
-        // Save dithered frame
-        QString ditheredPath = tempDir->path() + "/dithered_" + frameFiles[i];
-        if (!ditheredFrame.save(ditheredPath, "PNG")) {
-            qWarning() << "Failed to save dithered frame:" << i;
-            continue;
-        }
-
-        // Update progress atomically
-        int current = atomicProcessedFrames.fetchAndAddRelaxed(1) + 1;
-        
-        // Emit progress less frequently to avoid UI overhead
-        if (current % 10 == 0 || current == totalFrames) {
-            QMetaObject::invokeMethod(this, [this, current]() {
-                emit progressChanged(current, totalFrames);
-            }, Qt::QueuedConnection);
-        }
-        
-        // Emit frame processed for preview (but not too often)
-        if (current % 30 == 0 || current == totalFrames) {
-            QMetaObject::invokeMethod(this, [this, ditheredFrame, i]() {
-                emit frameProcessed(ditheredFrame, i);
-            }, Qt::QueuedConnection);
-        }
-    }
-}
 
 bool VideoProcessor::encodeVideo(const QString& outputPath) {
     state = EncodingVideo;
@@ -292,16 +305,15 @@ bool VideoProcessor::encodeVideo(const QString& outputPath) {
     connect(ffmpegProcess, &QProcess::readyReadStandardError,
             this, &VideoProcessor::onFFmpegReadyReadStandardError);
 
-    QString framesPattern = tempDir->path() + "/dithered_frame_%06d.png";
+    QString framesPattern = cachePath + "/dithered_frame_%06d.png";
     QStringList args;
     args << "-y"  // overwrite output file
          << "-framerate" << QString::number(videoFps)
          << "-i" << framesPattern
          << "-c:v" << "libx264"
          << "-pix_fmt" << "yuv420p"
-         << "-preset" << "veryfast"  // Changed from "medium" to "veryfast" for speed
+         << "-preset" << "veryfast"
          << "-crf" << "18"
-         << "-threads" << QString::number(threadCount)  // Use multiple threads for encoding too
          << outputPath;
 
     ffmpegProcess->start("ffmpeg", args);
@@ -355,7 +367,13 @@ bool VideoProcessor::processVideo(const QString& inputPath,
     currentOutputPath = outputPath;
     currentDitherCallback = ditherCallback;
 
-    return extractFrames(inputPath);
+    // First extract all frames
+    if (!extractAllFrames()) {
+        return false;
+    }
+    
+    // Then process frames sequentially to minimize memory usage
+    return processFramesSequentially();
 }
 
 void VideoProcessor::cancel() {

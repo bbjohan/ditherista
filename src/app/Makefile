@@ -1466,11 +1466,22 @@ moc_editcombobox.cpp: ui_elements/editcombobox.h \
 
 moc_mainwindow.cpp: mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1712,11 +1723,22 @@ svg.o: ui_elements/svg.cpp ui_elements/svg.h
 
 main.o: main.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1743,11 +1765,22 @@ main.o: main.cpp mainwindow.h \
 
 mainwindow.o: mainwindow.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1771,7 +1804,6 @@ mainwindow.o: mainwindow.cpp mainwindow.h \
 		ui_batchditherdialog.h \
 		videotimeline.h \
 		modernredux/style.h \
-		treewidget.h \
 		consts.h \
 		ui_elements/svg.h \
 		ui_elements/signalblocker.h
@@ -1779,11 +1811,22 @@ mainwindow.o: mainwindow.cpp mainwindow.h \
 
 mainwindow_ui.o: mainwindow_ui.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1813,11 +1856,22 @@ mainwindow_ui.o: mainwindow_ui.cpp mainwindow.h \
 
 mainwindow_dither_mono.o: mainwindow_dither_mono.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1845,11 +1899,22 @@ mainwindow_dither_mono.o: mainwindow_dither_mono.cpp mainwindow.h \
 
 mainwindow_dither_color.o: mainwindow_dither_color.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1877,11 +1942,22 @@ mainwindow_dither_color.o: mainwindow_dither_color.cpp mainwindow.h \
 
 mainwindow_update_check.o: mainwindow_update_check.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1909,11 +1985,22 @@ mainwindow_update_check.o: mainwindow_update_check.cpp mainwindow.h \
 
 mainwindow_img_adjust.o: mainwindow_img_adjust.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1942,11 +2029,22 @@ mainwindow_img_adjust.o: mainwindow_img_adjust.cpp mainwindow.h \
 
 mainwindow_palette.o: mainwindow_palette.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -1975,11 +2073,22 @@ mainwindow_palette.o: mainwindow_palette.cpp mainwindow.h \
 
 mainwindow_helpers.o: mainwindow_helpers.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -2008,11 +2117,22 @@ mainwindow_helpers.o: mainwindow_helpers.cpp mainwindow.h \
 
 mainwindow_video.o: mainwindow_video.cpp mainwindow.h \
 		ui_mainwindow.h \
+		ui_elements/editcombobox.h \
+		colortree.h \
+		ui_elements/colorcopymenu.h \
+		treewidget.h \
+		enums.h \
+		ui_elements/doublelabel.h \
+		ui_elements/doublepushbutton.h \
+		ui_elements/elidelabel.h \
+		ui_elements/sectioncombobox.h \
+		ui_elements/stackedwidget.h \
+		viewport/graphicsview.h \
+		viewport/graphicspixmapitem.h \
 		about/aboutwindow.h \
 		../../build/ui_aboutwindow.h \
 		help/helpwindow.h \
 		../../build/ui_helpwindow.h \
-		enums.h \
 		imagehash/imagehashmono.h \
 		../../libdither/src/libdither/libdither.h \
 		../../libdither/src/libdither/matrices.h \
@@ -2036,7 +2156,8 @@ mainwindow_video.o: mainwindow_video.cpp mainwindow.h \
 		ui_batchditherdialog.h \
 		videotimeline.h \
 		videoprocessor.h \
-		videoprocessdialog.h
+		videoprocessdialog.h \
+		consts.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o mainwindow_video.o mainwindow_video.cpp
 
 treewidget.o: treewidget.cpp treewidget.h \

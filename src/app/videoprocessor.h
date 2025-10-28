@@ -5,11 +5,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QImage>
-#include <QTemporaryDir>
 #include <functional>
-#include <QThreadPool>
-#include <QFutureWatcher>
-#include <QtConcurrent>
 
 class VideoProcessor : public QObject {
     Q_OBJECT
@@ -35,9 +31,6 @@ public:
     
     // Check if FFmpeg is available
     static bool checkFFmpegAvailable();
-    
-    // Set number of threads for parallel processing (default: CPU cores)
-    void setThreadCount(int count);
 
 signals:
     void progressChanged(int current, int total);
@@ -46,14 +39,14 @@ signals:
     void errorOccurred(const QString& error);
 
 private slots:
-    void onFFmpegExtractFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void onFFmpegEncodeFinished(int exitCode, QProcess::ExitStatus exitStatus);
     void onFFmpegReadyReadStandardError();
 
 private:
-    bool extractFrames(const QString& inputPath);
+    bool extractAllFrames();
+    bool processFramesSequentially();
     bool encodeVideo(const QString& outputPath);
-    void processFramesBatch(int startFrame, int endFrame, const QStringList& frameFiles);
+    void cleanupCache();
 
     enum State {
         Idle,
@@ -64,7 +57,7 @@ private:
 
     State state = Idle;
     QProcess* ffmpegProcess = nullptr;
-    QTemporaryDir* tempDir = nullptr;
+    QString cachePath;
     
     QString currentInputPath;
     QString currentOutputPath;
@@ -77,10 +70,6 @@ private:
     int processedFrames = 0;
     
     bool isCancelled = false;
-    int threadCount = QThread::idealThreadCount();
-    
-    QMutex progressMutex;
-    QAtomicInt atomicProcessedFrames;
 };
 
 #endif // VIDEOPROCESSOR_H
