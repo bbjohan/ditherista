@@ -10,11 +10,13 @@
 #include <QCoreApplication>
 #include <QFile>
 #include <QPixmapCache>
+#include <QSettings>
 
 VideoProcessor::VideoProcessor(QObject* parent) : QObject(parent) {
-    // Use .cache/ditherista directory instead of temporary directory
-    QString cacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
-    cachePath = cacheDir + "/ditherista";
+    // Load cache directory from settings, or use default
+    QSettings settings("ditherista", "ditherista");
+    QString defaultCacheDir = QStandardPaths::writableLocation(QStandardPaths::CacheLocation) + "/ditherista";
+    cachePath = settings.value("cache/directory", defaultCacheDir).toString();
     
     QDir dir;
     if (!dir.mkpath(cachePath)) {

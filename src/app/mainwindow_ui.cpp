@@ -234,6 +234,7 @@ void MainWindow::connectSignals() {
     connect(ui->actionExportVideo, SIGNAL(triggered()), this, SLOT(exportVideoSlot()));
     connect(ui->actionCopy, SIGNAL(triggered()), this, SLOT(copySlot()));
     connect(ui->actionPaste, SIGNAL(triggered()), this, SLOT(pasteSlot()));
+    connect(ui->actionSettings, SIGNAL(triggered()), this, SLOT(showSettingsDialogSlot()));
     connect(ui->actionQuickTour, SIGNAL(triggered()), helpWindow, SLOT(showHelp()));
     connect(ui->actionChangelog, SIGNAL(triggered()), helpWindow, SLOT(showChangelog()));
     connect(ui->actionCheck_for_Updates, SIGNAL(triggered()), this, SLOT(updateCheckSlot()));

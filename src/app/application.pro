@@ -69,7 +69,8 @@ SOURCES += \
     ui_elements/sectioncombobox.cpp \
     videoprocessor.cpp \
     videoprocessdialog.cpp \
-    videotimeline.cpp
+    videotimeline.cpp \
+    settingsdialog.cpp
 
 HEADERS += \
     modernredux/style.h \
@@ -106,7 +107,8 @@ HEADERS += \
     ui_elements/sectioncombobox.h \
     videoprocessor.h \
     videoprocessdialog.h \
-    videotimeline.h
+    videotimeline.h \
+    settingsdialog.h
 
 FORMS += \
     mainwindow.ui \
@@ -117,7 +119,8 @@ FORMS += \
     batch/ditherresults.ui \
     batch/fileexistsdialog.ui \
     updatecheck.ui \
-    videoprocessdialog.ui
+    videoprocessdialog.ui \
+    settingsdialog.ui
 
 RESOURCES += \
     modernredux/modernredux.qrc \

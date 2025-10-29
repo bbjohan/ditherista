@@ -4,6 +4,7 @@
 #include "consts.h"
 #include "ui_elements/svg.h"
 #include "ui_elements/signalblocker.h"
+#include "settingsdialog.h"
 
 #include <QClipboard>
 #include <QMimeData>
@@ -381,4 +382,10 @@ void MainWindow::loadImage(const QImage* image) {
         enableGui(true);
     }
     treeWidgetItemChangedSlot(activeTreeWidget->currentItem());
+}
+
+void MainWindow::showSettingsDialogSlot()
+{
+    SettingsDialog dialog(this);
+    dialog.exec();
 }

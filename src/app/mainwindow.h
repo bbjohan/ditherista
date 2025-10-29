@@ -254,6 +254,9 @@ private slots:
     // online update check
     void networkRequestFinishedSlot(QNetworkReply* reply) const;
     void updateCheckSlot();
+    
+    // settings dialog
+    void showSettingsDialogSlot();
 
     void savePaletteButtonClickedSlot();
     void resetHueWeightButtonClickedSlot();
