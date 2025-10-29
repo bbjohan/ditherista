@@ -260,6 +260,9 @@ void MainWindow::connectSignals() {
     connect(ui->GRD_width, SIGNAL(valueChanged(int)), this, SLOT(GRD_widthValueChangedSlot(int)), Qt::QueuedConnection);
     connect(ui->GRD_height, SIGNAL(valueChanged(int)), this, SLOT(GRD_heightValueChangedSlot(int)), Qt::QueuedConnection);
     connect(ui->GRD_minPixels, SIGNAL(valueChanged(int)), this, SLOT(GRD_minPixelsValueChangedSlot(int)), Qt::QueuedConnection);
+    // connect signals - common dither controls
+    connect(ui->dotSizeSpinBox, SIGNAL(valueChanged(int)), this, SLOT(dotSizeValueChangedSlot(int)), Qt::QueuedConnection);
+    connect(ui->dotSpacingSpinBox, SIGNAL(valueChanged(int)), this, SLOT(dotSpacingValueChangedSlot(int)), Qt::QueuedConnection);
     // connect signals - ditherer specific GUI controls / color
     connect(ui->ERR_C_serpentine, SIGNAL(toggled(bool)), this, SLOT(serpentineColorToggledSlot(bool)));
     connect(ui->ORD_IGR_C_step, SIGNAL(valueChanged(int)), this, SLOT(ORD_stepColorValueChangedSlot(int)), Qt::QueuedConnection);

@@ -405,22 +405,26 @@ void MainWindow::exportVideoSlot() {
             // Get the source image (with adjustments applied)
             DitherImage* sourceImg = reusableHashMono->getSourceImage();
             
+            // Get dot size and spacing from UI
+            int dot_size = ui->dotSizeSpinBox->value();
+            int dot_spacing = ui->dotSpacingSpinBox->value();
+            
             // Apply current dither algorithm synchronously
             switch (current_dither_type) {
                 case ALL: {
                     bool randomize = ui->ALL_randomize->isChecked();
-                    kallebach_dither(sourceImg, randomize, out_buf);
+                    kallebach_dither(sourceImg, randomize, dot_size, dot_spacing, out_buf);
                 } break;
                 case GRD: {
                     bool altAlgorithm = ui->GRD_altAlgorithm->isChecked();
                     int width = ui->GRD_width->value();
                     int height = ui->GRD_height->value();
                     int minPixels = ui->GRD_minPixels->value();
-                    grid_dither(sourceImg, width, height, minPixels, altAlgorithm, out_buf);
+                    grid_dither(sourceImg, width, height, minPixels, altAlgorithm, dot_size, dot_spacing, out_buf);
                 } break;
                 case DBS: {
                     int formula = ui->DBS_formula->currentIndex();
-                    dbs_dither(sourceImg, formula, out_buf);
+                    dbs_dither(sourceImg, formula, dot_size, dot_spacing, out_buf);
                 } break;
                 case THR: {
                     double threshold;
@@ -430,12 +434,12 @@ void MainWindow::exportVideoSlot() {
                         threshold = ui->THR_threshold->value();
                     }
                     double jitter = ui->THR_jitter->value();
-                    threshold_dither(sourceImg, threshold, jitter, out_buf);
+                    threshold_dither(sourceImg, threshold, jitter, dot_size, dot_spacing, out_buf);
                 } break;
                 case DOT: {
                     // Use cached matrices instead of reallocating
                     if (cachedDotDiffMatrix != nullptr && cachedDotClassMatrix != nullptr) {
-                        dot_diffusion_dither(sourceImg, cachedDotDiffMatrix, cachedDotClassMatrix, out_buf);
+                        dot_diffusion_dither(sourceImg, cachedDotDiffMatrix, cachedDotClassMatrix, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case ERR: {
@@ -443,13 +447,13 @@ void MainWindow::exportVideoSlot() {
                     if (cachedErrMatrix != nullptr) {
                         bool serpentine = ui->ERR_serpentine->isChecked();
                         double jitter = ui->ERR_jitter->value();
-                        error_diffusion_dither(sourceImg, cachedErrMatrix, serpentine, jitter, out_buf);
+                        error_diffusion_dither(sourceImg, cachedErrMatrix, serpentine, jitter, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case LIP: {
                     // Use cached matrices instead of reallocating
                     if (cachedDotClassMatrix != nullptr && cachedLippensCoef != nullptr) {
-                        dotlippens_dither(sourceImg, cachedDotClassMatrix, cachedLippensCoef, out_buf);
+                        dotlippens_dither(sourceImg, cachedDotClassMatrix, cachedLippensCoef, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case ORD: {
@@ -463,30 +467,30 @@ void MainWindow::exportVideoSlot() {
                         } else {
                             jitter = ui->ORD_jitter->value();
                         }
-                        ordered_dither(sourceImg, cachedOrdMatrix, jitter, out_buf);
+                        ordered_dither(sourceImg, cachedOrdMatrix, jitter, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case PAT: {
                     // Use cached pattern instead of reallocating
                     if (cachedPattern != nullptr) {
-                        pattern_dither(sourceImg, cachedPattern, out_buf);
+                        pattern_dither(sourceImg, cachedPattern, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case RIM: {
                     // Use cached curve instead of reallocating
                     if (cachedCurve != nullptr) {
                         bool modRiemersma = ui->RIM_modRiemersma->isChecked();
-                        riemersma_dither(sourceImg, cachedCurve, modRiemersma, out_buf);
+                        riemersma_dither(sourceImg, cachedCurve, modRiemersma, dot_size, dot_spacing, out_buf);
                     }
                 } break;
                 case VAR: {
                     bool serpentine = ui->VAR_serpentine->isChecked();
                     switch(current_sub_dither_type) {
                         case VAR_OST:
-                            variable_error_diffusion_dither(sourceImg, Ostromoukhov, serpentine, out_buf);
+                            variable_error_diffusion_dither(sourceImg, Ostromoukhov, serpentine, dot_size, dot_spacing, out_buf);
                             break;
                         case VAR_ZHF:
-                            variable_error_diffusion_dither(sourceImg, Zhoufang, serpentine, out_buf);
+                            variable_error_diffusion_dither(sourceImg, Zhoufang, serpentine, dot_size, dot_spacing, out_buf);
                             break;
                         default: break;
                     }
@@ -558,17 +562,21 @@ void MainWindow::exportVideoSlot() {
             // Get the source image (with adjustments applied)
             ColorImage* sourceImg = reusableHashColor->getSourceImage();
             
+            // Get dot size and spacing from UI
+            int dot_size = ui->dotSizeSpinBox->value();
+            int dot_spacing = ui->dotSpacingSpinBox->value();
+            
             // Apply current dither algorithm synchronously
             if (current_dither_type == ERR_C) {
                 // Use cached error diffusion matrix for color
                 if (cachedErrMatrix != nullptr) {
                     bool serpentine = ui->ERR_C_serpentine->isChecked();
-                    error_diffusion_dither_color(sourceImg, cachedErrMatrix, cachedPalette, serpentine, out_buf);
+                    error_diffusion_dither_color(sourceImg, cachedErrMatrix, cachedPalette, serpentine, dot_size, dot_spacing, out_buf);
                 }
             } else if (current_dither_type == ORD_C) {
                 // Use cached ordered dithering matrix for color
                 if (cachedOrdMatrix != nullptr) {
-                    ordered_dither_color(sourceImg, cachedPalette, cachedOrdMatrix, out_buf);
+                    ordered_dither_color(sourceImg, cachedPalette, cachedOrdMatrix, dot_size, dot_spacing, out_buf);
                 }
             }
             

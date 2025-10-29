@@ -211,6 +211,8 @@ private slots:
     void GRD_widthValueChangedSlot(int value) ;
     void GRD_heightValueChangedSlot(int value);
     void GRD_minPixelsValueChangedSlot(int value);
+    void dotSizeValueChangedSlot(int value);
+    void dotSpacingValueChangedSlot(int value);
     void serpentineToggledSlot(bool serpentine);
     void jitterValueChangedSlot(double jitter);
     // dither settings color
